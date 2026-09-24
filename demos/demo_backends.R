@@ -1,49 +1,63 @@
-# ALSI Demo: Parsing Backends — UDPipe, spaCy, Trankit
+# alsi-ai Demo: Parsing Backends — UDPipe, spaCy, Trankit
 #
-# parse_text() supports three NLP backends that all return the same
-# data.table format (one row per token, same columns). This demo shows
-# how to switch backends and what to expect from each one.
+# ALSI's parse_text() (udpipe) and alsi-ai's parse_text_spacy() /
+# parse_text_trankit() all return the same data.table format (one row per
+# token, same columns). This demo shows how to switch backends and what to
+# expect from each one.
 #
 # Backends at a glance:
-#   "udpipe"  — default; fast, pure R, no extra setup; rule-assisted lemma
-#               via the Lefff dictionary; ~96.7% UPOS, 97.4% lemma accuracy
-#   "spacy"   — CNN-based; best sentence segmentation (100%); strong UPOS
-#               (~97.1%); trainable lemmatizer (no Lefff, ~94.1% lemma)
-#   "trankit" — XLM-RoBERTa transformer; highest UPOS (~98.3%) and dependency
-#               accuracy (UAS 94.7%, LAS 92.2%); slower; requires ~1.1 GB
-#               XLM-RoBERTa download on first use (cached afterwards)
+#   parse_text()          — udpipe, default in alsi; fast, pure R, no extra
+#                            setup; rule-assisted lemma via the Lefff
+#                            dictionary; ~96.7% UPOS, 97.4% lemma accuracy
+#   parse_text_spacy()    — CNN-based; best sentence segmentation (100%);
+#                            strong UPOS (~97.1%); trainable lemmatizer (no
+#                            Lefff, ~94.1% lemma)
+#   parse_text_trankit()  — XLM-RoBERTa transformer; highest UPOS (~98.3%)
+#                            and dependency accuracy (UAS 94.7%, LAS 92.2%);
+#                            slower; requires ~1.1 GB XLM-RoBERTa download on
+#                            first use (cached afterwards)
 #
 # All three backends use the same retagged training data (copular être → VERB).
 # All metrics are end-to-end on the standard UD French-GSD test set.
 #
 # Prerequisites:
-#   - models/french_gsd-remix_3.udpipe    — UDPipe model
-#   - models/spacy_fr_gsd_alsi_v1/        — spaCy model
-#   - models/trankit_fr_v1/               — Trankit model
-#   - demo_corpora/viki_wiki.zip          — optional full corpus run
+#   - alsi cloned alongside this repo (../alsi), with its UDPipe model set up
+#   - models/spacy_fr_gsd_alsi_v1/        — spaCy model (this repo's own)
+#   - models/trankit_fr_v1/               — Trankit model (this repo's own)
+#   - ../alsi/demo_corpora/viki_wiki.zip  — optional full corpus run
 #   (spaCy and Trankit Python packages are installed automatically on first use)
 #
-# Last update: 2026-05-27
+# Last update: 2026-09-24
 #
 library(data.table)
 library(udpipe)
 
-source("../alsi/R/fnt_corpus.R", encoding = "UTF-8")
-source("../alsi/R/fnt_setup.R", encoding = "UTF-8")
+ALSI_DIR <- "../alsi"
+if (!dir.exists(ALSI_DIR)) {
+  stop("demo_backends.R | expected ALSI cloned at ", ALSI_DIR,
+       ". Clone https://github.com/gloignon/alsi alongside this repo.")
+}
+
+# alsi's parse_text() (udpipe, the default/classic backend) ...
+source(file.path(ALSI_DIR, "R/fnt_corpus.R"), encoding = "UTF-8")
+source(file.path(ALSI_DIR, "R/fnt_setup.R"),  encoding = "UTF-8")
+# ... and alsi-ai's own parse_text_spacy() / parse_text_trankit().
+source("R/fnt_corpus_backends.R", encoding = "UTF-8")
 
 
 # 1) Setup ----
 
-# Model paths — edit these if your models live elsewhere.
-udpipe_model_path  <- "models/french_gsd-remix_3.udpipe"
+# Model paths — edit these if your models live elsewhere. The UDPipe model
+# ships with alsi; spaCy and Trankit models are alsi-ai's own.
+udpipe_model_path  <- file.path(ALSI_DIR, "models/french_gsd-remix_3.udpipe")
 spacy_model_path   <- "models/spacy_fr_gsd_alsi_v1"
 trankit_model_path <- "models/trankit_fr_v1"
 
 # Load the UDPipe model into memory (needed only for the udpipe backend).
-# spaCy and Trankit load lazily on first parse_text() call.
+# spaCy and Trankit load lazily on first parse_text_spacy()/parse_text_trankit() call.
 if (!file.exists(udpipe_model_path)) {
   message("French UDPipe model not found — downloading from GitHub (one-time, ~50 MB)...")
-  source("../alsi/R/artefact_builders/fetch_udpipe_models.R")
+  source(file.path(ALSI_DIR, "R/artefact_builders/fetch_udpipe_models.R"))
 }
 udmodel_french <- udpipe_load_model(file = udpipe_model_path)
 
@@ -74,7 +88,7 @@ example_texts <- c(
 # Fast, no extra setup. Lemmatisation is helped by the Lefff lexicon.
 # Copular être is tagged VERB (our convention) with dep_rel = "cop".
 
-dt_udpipe <- parse_text(example_texts, backend = "udpipe")
+dt_udpipe <- parse_text(example_texts, ud_model = udpipe_model_path)
 
 print(dt_udpipe[, .(doc_id, token_id, token, lemma, upos, dep_rel, head_token_id)])
 
@@ -90,7 +104,7 @@ print(dt_udpipe[, .(doc_id, token_id, token, lemma, upos, dep_rel, head_token_id
 # Python packages are installed automatically on first use — no manual setup.
 # spaCy does not produce MWT rows, so token_id is always a plain integer.
 
-dt_spacy <- parse_text(example_texts, backend = "spacy", spacy_model = spacy_model_path)
+dt_spacy <- parse_text_spacy(example_texts, spacy_model = spacy_model_path)
 
 print(dt_spacy[, .(doc_id, token_id, token, lemma, upos, dep_rel, head_token_id)])
 
@@ -104,7 +118,7 @@ print(dt_spacy[, .(doc_id, token_id, token, lemma, upos, dep_rel, head_token_id)
 #
 # The model files must be in models/trankit_fr_v1/ (same convention as UDPipe).
 
-dt_trankit <- parse_text(example_texts, backend = "trankit", trankit_model = trankit_model_path)
+dt_trankit <- parse_text_trankit(example_texts, trankit_model = trankit_model_path)
 
 print(dt_trankit[, .(doc_id, token_id, token, lemma, upos, dep_rel, head_token_id)])
 
@@ -157,13 +171,17 @@ print(dt_compare[, .(doc_id, token_id, token,
 
 # 6) Full corpus with spaCy ----
 #
-# For a whole corpus, the API is identical to UDPipe — just add backend = "spacy".
+# For a whole corpus, the API is identical to UDPipe — just call
+# parse_text_spacy() instead of parse_text().
 # spaCy is typically faster than Trankit on CPU for large batches.
 
-if (file.exists("demo_corpora/viki_wiki.zip") || dir.exists("demo_corpora/viki_wiki")) {
-  dt_txt <- load_demo_corpus()
+viki_wiki_zip <- file.path(ALSI_DIR, "demo_corpora/viki_wiki.zip")
+viki_wiki_dir <- file.path(ALSI_DIR, "demo_corpora/viki_wiki")
+if (file.exists(viki_wiki_zip) || dir.exists(viki_wiki_dir)) {
+  corpus_dir <- ensure_viki_wiki_demo_corpus(corpus_dir = viki_wiki_dir, zip_path = viki_wiki_zip)
+  dt_txt <- build_corpus(corpus_dir)
   message(nrow(dt_txt), " documents loaded — parsing with spaCy...")
-  dt_spacy_corpus <- parse_text(dt_txt, backend = "spacy", spacy_model = spacy_model_path)
+  dt_spacy_corpus <- parse_text_spacy(dt_txt, spacy_model = spacy_model_path)
 } else {
-  message("Place the Viki-Wiki corpus zip at demo_corpora/viki_wiki.zip for a full corpus run.")
+  message("Place the Viki-Wiki corpus zip at ", viki_wiki_zip, " for a full corpus run.")
 }

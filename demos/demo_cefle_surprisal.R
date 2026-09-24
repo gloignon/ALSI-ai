@@ -48,8 +48,14 @@ py_require(c(
   "numpy"
 ), action = "add")
 
+ALSI_DIR <- "../alsi"
+if (!dir.exists(ALSI_DIR)) {
+  stop("demo_cefle_surprisal.R | expected ALSI cloned at ", ALSI_DIR,
+       ". Clone https://github.com/gloignon/alsi alongside this repo.")
+}
+
 source("R/fnt_surprisal.R", encoding = "UTF-8")
-source("../alsi/R/fnt_utility.R",   encoding = "UTF-8")
+source(file.path(ALSI_DIR, "R/fnt_utility.R"), encoding = "UTF-8")
 
 dir.create("out", showWarnings = FALSE)
 
@@ -65,7 +71,7 @@ dir.create("out", showWarnings = FALSE)
 # ALSI does not redistribute CEFLE (ELRA license prohibits redistribution).
 # On first run the fetcher script downloads it directly from Lund University.
 
-cefle_csv <- "demo_corpora/cefle_corpus_texts.csv"
+cefle_csv <- file.path(ALSI_DIR, "demo_corpora/cefle_corpus_texts.csv")
 
 if (!file.exists(cefle_csv)) {
   message(
@@ -81,7 +87,11 @@ if (!file.exists(cefle_csv)) {
     "By continuing you confirm that your use is non-commercial and academic.\n",
     "Fetching now..."
   )
-  source("../alsi/R/artefact_builders/fetch_cefle_transversal.R", encoding = "UTF-8")
+  # fetch_cefle_transversal.R writes to a cwd-relative demo_corpora/ path, so
+  # run it with ALSI_DIR as the working directory (alsi owns this corpus).
+  old_wd <- setwd(ALSI_DIR)
+  source("R/artefact_builders/fetch_cefle_transversal.R", encoding = "UTF-8")
+  setwd(old_wd)
 }
 
 df_cefle <- read_csv(

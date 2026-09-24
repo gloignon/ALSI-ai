@@ -23,9 +23,10 @@
 #   5) visualise with boxplots and print a summary statistics table.
 #
 # Prerequisites:
+#   - alsi cloned alongside this repo (../alsi), with its UDPipe model set up
+#     (models/french_gsd-remix_3.udpipe)
 #   - Python with transformers, torch, tokenizers, numpy (auto-installed via py_require)
 #   - Internet access for first download of corpus and model
-#   - models/french_gsd-remix_3.udpipe
 #   - Best run in a fresh R session: reticulate locks parts of the Python
 #     configuration once Python starts, so a session that already ran another
 #     Python-based demo can fail to add packages.
@@ -50,10 +51,16 @@ py_require(c(
   "numpy"
 ), action = "add")
 
+ALSI_DIR <- "../alsi"
+if (!dir.exists(ALSI_DIR)) {
+  stop("demo_surprisal.R | expected ALSI cloned at ", ALSI_DIR,
+       ". Clone https://github.com/gloignon/alsi alongside this repo.")
+}
+
 source("R/fnt_surprisal.R",       encoding = "UTF-8")
 source("R/fnt_top_predictions.R", encoding = "UTF-8")
-source("../alsi/R/fnt_corpus.R",          encoding = "UTF-8")
-source("../alsi/R/fnt_utility.R",         encoding = "UTF-8")
+source(file.path(ALSI_DIR, "R/fnt_corpus.R"),  encoding = "UTF-8")
+source(file.path(ALSI_DIR, "R/fnt_utility.R"), encoding = "UTF-8")
 
 
 
@@ -262,7 +269,10 @@ if (file.exists(cache_alector_parsed)) {
   message(nrow(dt_alector_txt), " documents loaded")
 
   n_cores        <- max(1, parallel::detectCores() - 1)
-  dt_alector_raw <- parse_text(dt_alector_txt, n_cores = n_cores)
+  dt_alector_raw <- parse_text(
+    dt_alector_txt, n_cores = n_cores,
+    ud_model = file.path(ALSI_DIR, "models/french_gsd-remix_3.udpipe")
+  )
   dt_alector     <- post_process_lexicon(dt_alector_raw)
   saveRDS(dt_alector, cache_alector_parsed)
   message("Saved to ", cache_alector_parsed)
@@ -328,7 +338,7 @@ print(df_docs)
 # if simplification makes language more predictable.
 # The plot_faceted_boxplot() utility handles paired labeling automatically.
 
-source("../alsi/R/fnt_utility.R", encoding = "UTF-8")
+source(file.path(ALSI_DIR, "R/fnt_utility.R"), encoding = "UTF-8")
 
 df_docs |>
   rename(Surprisal = llm_surprisal, Entropy = llm_entropy) |>

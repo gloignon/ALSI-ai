@@ -39,14 +39,22 @@
 
 library(data.table)
 
-source("../alsi/R/fnt_corpus.R",  encoding = "UTF-8")
-source("R/fnt_ollama.R",  encoding = "UTF-8")
-source("../alsi/R/fnt_setup.R", encoding = "UTF-8")
+ALSI_DIR <- "../alsi"
+if (!dir.exists(ALSI_DIR)) {
+  stop("demo_ollama.R | expected ALSI cloned at ", ALSI_DIR,
+       ". Clone https://github.com/gloignon/alsi alongside this repo.")
+}
+
+source(file.path(ALSI_DIR, "R/fnt_corpus.R"), encoding = "UTF-8")
+source("R/fnt_ollama.R", encoding = "UTF-8")
+source(file.path(ALSI_DIR, "R/fnt_setup.R"),  encoding = "UTF-8")
 
 # Address (IP/hostname + port) of the Ollama server. Change this if Ollama
 # is running on a nonstandard port or on a different machine than the one
 # running this script.
 OLLAMA_ENDPOINT <- "http://localhost:11434"
+
+dir.create("out", showWarnings = FALSE)
 
 
 # 1) Smoke test — verify Ollama is responding ----
@@ -83,7 +91,11 @@ if (is.na(dt_test$ollama_response[1]) || !nzchar(dt_test$ollama_response[1])) {
 
 N_DOCS <- 5
 
+# load_demo_corpus()/ensure_viki_wiki_demo_corpus() resolve paths relative to
+# the working directory, so switch into ALSI_DIR just for this step.
+old_wd <- setwd(ALSI_DIR)
 dt_corpus <- load_demo_corpus()
+setwd(old_wd)
 dt_wiki   <- dt_corpus[grepl("^wiki_", doc_id)][1:N_DOCS]
 
 message("Demo corpus: ", nrow(dt_wiki), " documents")

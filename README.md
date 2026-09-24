@@ -14,21 +14,11 @@ some_folder/
 └── alsi-ai/
 ```
 
-Demo scripts `source()` ALSI's classic feature files from `../alsi/R/` for the parsing step, then load this repo's `R/` files for the AI features. Python dependencies (`torch`, `transformers`, `sentence-transformers`, `spacy`, `trankit`, ...) are declared per-function via `reticulate::py_require()` and installed automatically on first use — no manual venv setup needed.
+Every entry point (`main_ai.R` and each `demos/*.R` script) sets `ALSI_DIR <- "../alsi"` and resolves ALSI's files explicitly through it — `source(file.path(ALSI_DIR, "R/fnt_corpus.R"))` for the parser, `file.path(ALSI_DIR, "models/french_gsd-remix_3.udpipe")` for the UDPipe model, `file.path(ALSI_DIR, "demo_corpora/...")` for shared demo corpora, and `file.path(ALSI_DIR, "out/demo_parsed_tagged.Rds")` for ALSI's cached parsed corpus (produced by its `demos/demo_parse_tag.R`). No symlinks needed — just clone `alsi` alongside this repo as shown above. Files this repo owns itself (its own `models/` — spaCy, Trankit, the neural POS LM, fetched via `R/artefact_builders/fetch_spacy_models.R`/`fetch_trankit_models.R` — and its own `out/` cache) stay as plain relative paths.
 
-Several demos (inherited as-is from ALSI, where they were originally written) still resolve `models/`, `demo_corpora/`, and cached `out/*.Rds` files relative to the working directory — e.g. `models/french_gsd-remix_3.udpipe` for parsing, or `out/demo_parsed_tagged.Rds` produced by ALSI's `demos/demo_parse_tag.R`. The simplest fix, until these are fully decoupled, is to symlink ALSI's shared resources into this repo before running demos from here:
+Python dependencies (`torch`, `transformers`, `sentence-transformers`, `spacy`, `trankit`, ...) are declared per-function via `reticulate::py_require()` and installed automatically on first use — no manual venv setup needed.
 
-```sh
-mkdir -p models out
-ln -s ../../alsi/models/french_gsd-remix_3.udpipe models/french_gsd-remix_3.udpipe
-ln -s ../../alsi/models/pos_trigram_fr_gsd_alsi.Rds models/pos_trigram_fr_gsd_alsi.Rds
-ln -s ../alsi/demo_corpora demo_corpora
-ln -s ../alsi/out/demo_parsed_tagged.Rds out/demo_parsed_tagged.Rds  # after running alsi's demo_parse_tag.R
-```
-
-(alsi-ai's own AI models — spaCy, Trankit, the neural POS LM — are fetched separately into this repo's own `models/` directory by `R/artefact_builders/fetch_spacy_models.R` / `fetch_trankit_models.R`, so only the specific ALSI files above are symlinked, not the whole directory.)
-
-`main_ai.R` does not need this — it resolves ALSI's paths explicitly via `ALSI_DIR`.
+For parsing, use ALSI's `parse_text()` (UDPipe, the default) or this repo's `parse_text_spacy()` / `parse_text_trankit()` (`R/fnt_corpus_backends.R`) — all three return the same `data.table` format. There is no `backend =` argument on a single `parse_text()`; each backend is its own function.
 
 ## Feature families
 

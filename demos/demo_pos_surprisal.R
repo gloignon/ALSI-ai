@@ -27,12 +27,13 @@
 # every position.
 #
 # Prerequisites:
-# - out/demo_parsed_tagged.Rds — run demos/demo_parse_tag.R first (section 5).
-# - models/french_gsd-remix_3.udpipe — the standard ALSI UDPipe model (same
-#   verb-retagging convention as the POS trigram model); downloaded
+# - alsi cloned alongside this repo (../alsi); run its demos/demo_parse_tag.R
+#   first (creates ../alsi/out/demo_parsed_tagged.Rds, section 5 below).
+# - ../alsi/models/french_gsd-remix_3.udpipe — the standard ALSI UDPipe model
+#   (same verb-retagging convention as the POS trigram model); downloaded
 #   automatically from the GitHub release if missing.
 # - models/pos_lm_fr_gsd_alsi.pt — the neural POS-LM checkpoint, ships with
-#   ALSI. Scoring requires reticulate + torch (installed automatically via
+#   alsi-ai. Scoring requires reticulate + torch (installed automatically via
 #   reticulate::py_require() on first use).
 
 # 1) Setup ----
@@ -41,9 +42,15 @@ library(tidyverse)
 library(udpipe)
 library(data.table)
 
-source("../alsi/R/fnt_pos_surprisal.R",    encoding = "UTF-8")
+ALSI_DIR <- "../alsi"
+if (!dir.exists(ALSI_DIR)) {
+  stop("demo_pos_surprisal.R | expected ALSI cloned at ", ALSI_DIR,
+       ". Clone https://github.com/gloignon/alsi alongside this repo.")
+}
+
+source(file.path(ALSI_DIR, "R/fnt_pos_surprisal.R"), encoding = "UTF-8")
 source("R/fnt_pos_surprisal_nn.R", encoding = "UTF-8")
-source("../alsi/R/fnt_utility.R",          encoding = "UTF-8")
+source(file.path(ALSI_DIR, "R/fnt_utility.R"),       encoding = "UTF-8")
 
 # Settings used when the distributed model was built. The same values must be
 # passed to every pos_surprisal() / pos_surprisal_nn() call so scoring matches
@@ -57,15 +64,15 @@ POS_LM_PATH    <- "models/pos_lm_fr_gsd_alsi.pt"
 # Trained on French-GSD with the ALSI verb-retagging convention, PUNCT/SYM
 # excluded, sentence boundaries enabled. Ships with ALSI.
 message("Loading distributed POS model...")
-pos_model <- readRDS("models/pos_trigram_fr_gsd_alsi.Rds")
+pos_model <- readRDS(file.path(ALSI_DIR, "models/pos_trigram_fr_gsd_alsi.Rds"))
 
 
 # 3) Score individual sentences ----
 
-alsi_udpipe_path <- "models/french_gsd-remix_3.udpipe"
+alsi_udpipe_path <- file.path(ALSI_DIR, "models/french_gsd-remix_3.udpipe")
 if (!file.exists(alsi_udpipe_path)) {
   message("ALSI UDPipe model not found — downloading from GitHub (one-time, ~68 MB)...")
-  source("../alsi/R/artefact_builders/fetch_udpipe_models.R")
+  source(file.path(ALSI_DIR, "R/artefact_builders/fetch_udpipe_models.R"))
 }
 udmodel <- udpipe_load_model(alsi_udpipe_path)
 
@@ -157,11 +164,12 @@ print(compare_pos_backends(dt_hard))
 # 5) Full corpus scoring (on Viki-Wiki) ----
 
 message("Loading parsed corpus...")
-if (!file.exists("out/demo_parsed_tagged.Rds")) {
-  stop("out/demo_parsed_tagged.Rds not found — run demos/demo_parse_tag.R first.",
+alsi_parsed_corpus <- file.path(ALSI_DIR, "out/demo_parsed_tagged.Rds")
+if (!file.exists(alsi_parsed_corpus)) {
+  stop(alsi_parsed_corpus, " not found — run demos/demo_parse_tag.R in ", ALSI_DIR, " first.",
        call. = FALSE)
 }
-dt_corpus <- readRDS("out/demo_parsed_tagged.Rds") |> as_tibble()
+dt_corpus <- readRDS(alsi_parsed_corpus) |> as_tibble()
 
 message("Scoring POS surprisal on full corpus (trigram)...")
 corpus_res <- pos_surprisal(dt_corpus, pos_model, exclude_pos = EXCLUDE_POS,

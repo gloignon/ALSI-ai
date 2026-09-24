@@ -32,7 +32,8 @@
 #   4) print a combined comparison table across both corpora.
 #
 # Prerequisites:
-#   - Run demos/demo_parse_tag.R first (creates out/demo_parsed_tagged.Rds)
+#   - alsi cloned alongside this repo (../alsi); run its demos/demo_parse_tag.R
+#     first (creates ../alsi/out/demo_parsed_tagged.Rds)
 #   - Python with sentence-transformers, transformers, torch, numpy, scipy
 #     (auto-installed via py_require — you do not need to set up a venv)
 #   - Internet access on first run to download the embedding model (~400 MB)
@@ -60,8 +61,16 @@ py_require(c(
   "scipy"
 ), action = "add")
 
-source("../alsi/R/fnt_utility.R",    encoding = "UTF-8")
+ALSI_DIR <- "../alsi"
+if (!dir.exists(ALSI_DIR)) {
+  stop("demo_embeddings.R | expected ALSI cloned at ", ALSI_DIR,
+       ". Clone https://github.com/gloignon/alsi alongside this repo.")
+}
+
+source(file.path(ALSI_DIR, "R/fnt_utility.R"), encoding = "UTF-8")
 source("R/fnt_embeddings.R", encoding = "UTF-8")
+
+dir.create("out", showWarnings = FALSE)
 
 # The embedding model to use. This French document encoder is a good default;
 # replace with any HuggingFace model compatible with sentence-transformers.
@@ -94,11 +103,12 @@ feat_cols <- c(
 # and document-level embedding tables. The sentence-level table is what
 # embedding_coherence() needs to compute structural features.
 
-if (!file.exists("out/demo_parsed_tagged.Rds")) {
-  stop("out/demo_parsed_tagged.Rds not found — run demos/demo_parse_tag.R first.",
+alsi_parsed_corpus <- file.path(ALSI_DIR, "out/demo_parsed_tagged.Rds")
+if (!file.exists(alsi_parsed_corpus)) {
+  stop(alsi_parsed_corpus, " not found — run demos/demo_parse_tag.R in ", ALSI_DIR, " first.",
        call. = FALSE)
 }
-dt_parsed_corpus <- readRDS("out/demo_parsed_tagged.Rds")
+dt_parsed_corpus <- readRDS(alsi_parsed_corpus)
 message("Viki-Wiki corpus: ", n_distinct(dt_parsed_corpus$doc_id),
         " documents, ", nrow(dt_parsed_corpus), " tokens")
 
