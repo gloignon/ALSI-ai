@@ -1,0 +1,30 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+/private/
+/out/*
+/.venv/
+__pycache__/
+*.pyc
+/.claude/
+._*
+
+# Large transformer weights (users fetch from HuggingFace)
+/models/trankit_fr_v1/xlm-roberta-base/models--xlm-roberta-base/blobs/
+/models/trankit_fr_v1/xlm-roberta-base/models--xlm-roberta-base/snapshots/*/model.safetensors
+
+# Local/downloaded models — fetched via R/artefact_builders/fetch_*.R or
+# downloaded automatically by reticulate/HuggingFace on first use.
+models/*
+
+# Root markdown — only README, FEATURES, LICENSE are distributed.
+/*.md
+!/README.md
+!/FEATURES.md
+!/LICENSE.md
+
+# Stray R/build artifacts
+Rplots.pdf
+index.html
+.DS_Store
